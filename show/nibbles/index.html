@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        font-family: Helvetica, Arial, sans-serif;
+        line-height: 1.2;
+        max-width: min(60em, 95vw);
+        margin: 0 auto;
+      }
+      img {
+        display: block;
+        margin: .5em 0;
+        max-width: 95vw;
+      }
+      @media (width > 500px) {
+        img {
+          float: right;
+          margin-left: 1em;
+        }
+      }
+    </style>
+    <title>NIBBLES.BAS</title>
+  </head>
+  <body>
+
+<!-- TODO bunny hopping -->
+
+<h1>NIBBLES.BAS</h1>
+
+<h2>Start</h2>
+
+<p>My parents had bought a personal computer for my brother and I even though none of us knew how to use one; they figured it was a better alternative to TV for kids to play with. I remember asking my dad what <code>C:\&gt;</code> was and he told me not to worry about it and write stories. So I would click clack away for a few lines until the command line buffer filled&mdash;unmistakable by the shrill beeps&mdash;and asked why nothing was coming out anymore. "Just press Enter." "What does 'Bad command or file name' mean?"
+
+<a href="https://archive.org/details/321-contact-magazine-september-1984"><img src="321 Contact Magazine - September 1984_0000.jpg" style="max-height: 20em"></a>
+
+<p>My parents dropped my brother and I off at the library most Sundays as public daycare. I liked going into the huge marble building downtown and looking around the children's section in the basement. My brother liked Garfield; I was more Calvin and Hobbes. I learned about my heritage through picture books about the mischievous monkey king. I love libraries.
+
+<p><a href="https://archive.org/details/321-contact-january-february-1986/page/36/mode/2up">3-2-1 Contact</a> was one of my favorite children's magazines. It made you curious about the world by showing things even if you might not understand them. They had a coding column every issue that had a couple dozen lines of BASIC. I never knew what the programs did; I only knew about "Bad command or file name."
+
+<p>One day I found a special issue. Like all the others it had a coding column with a couple dozen lines of BASIC. But there was also an aside written in a starburst, to the effect of: Did you know most PCs with DOS come with a BASIC interpreter? Try running <code>C:\&gt; qbasic.exe</code>!
+
+<p>QBasic was my very first programming language. It included some sample programs, presumably to show you how to use it. I just liked playing the games. <a href="https://www.youtube.com/watch?v=lyBD0X81tjk">GORILLAS.BAS</a> had the best graphics and sound effects; also what a killer premise, gorillas throwing exploding bananas across building tops. <a href="https://www.youtube.com/watch?v=APZ693pQju4">NIBBLES.BAS</a> was the runner up, but honestly I had way more fun playing it. It has support for two players, so my brother would play with me. Usually we played cooperatively but we could also be mischievous monkeys.
+
+<!-- <p>QBasic does not to my knowledge have a way to sleep for less than a second. Nibbles uses a busy loop in between game ticks to control speed. Years later our 486DX computer featured a <a href="https://en.wikipedia.org/wiki/Turbo_button">Turbo button</a> that could be disabled to throttle the CPU clock rate so our games with busy loops would still run reasonably. Nibbles also doubles the vertical resolution of the game arena from 24 text rows to a whopping 48 effective rows by cleverly <a href="https://eieio.games/blog/secure-massively-multiplayer-snake/#toc:two-pixels-per-character">drawing a half-height character with different background and foreground colors</a>. -->
+
+<h2>Level select</h2>
+
+<img src=spinners.png style="max-height: 10em">
+
+<p>Near the end of my second batch at the <a href="https://www.recurse.com/">Recurse Center</a>, my friend <a href="https://www.frankchiarulli.com/blog/building-the-rcade/">Frank brought in a vintage arcade cabinet</a>. As soon as he powered it on and I heard the CRT coil whine, years of memories with QBasic, <a href="https://en.wikipedia.org/wiki/Turbo_button">Turbo buttons</a>, and childhood computers flooded in.
+
+<p>A few days later, Frank installed the spinners (inspired by <a href="https://hoverburger.com/">Hover Burger</a> at the singular <a href="https://www.wonderville.nyc/">Wonderville</a>). I had also just watched Tron: Ares (advice: don't) and was reliving memories of <a href="https://sourceforge.net/projects/gltron/">GLtron</a>. Somehow with this combination of vintage gaming, digital, and analog controls, I knew what I had to do. I had to break Nibbles out of the grid.
+
+<h2>Main game</h2>
+
+<p>I knew going in that I wanted the snakes to be able to go 360 degrees with the spinner, so I couldn't use a standard text grid. But I also wanted to maintain the illusion that my game was just a nostalgic and straightforward port of the classic Nibbles; so I had to fastidiously ensure that every draw rendered on character boundaries even while using floating point and polar coordinates under the hood.
+
+<a href=glyphs.png><img src=glyphs.png style="max-height: 20em"></a>
+
+<p>Just getting <a href="https://stackoverflow.com/questions/195262/can-i-turn-off-antialiasing-on-an-html-canvas-element">rid of antialiasing</a> so we could have perfectly crisp pixels was a challenge. I ended up writing to the image bitmap and loading that into the canvas, avoiding any canvas rendering operations altogether. That means all the line drawing and text rendering are implemented from scratch. My favorite VS Code mini map of all time is the source file that encodes the bitmap font; I wrote <code>A</code> and Claude generated the rest.
+
+<p>Collision detection was particularly tricky. We know that we can't just detect overlap on the character grid, since activating the spinners breaks out of the grid. Instead it is implemented by reading from the image bitmap; if we try to draw the front of the snake and encounter a pixel that isn't blue (the color of our background), then we've hit something. But.
+
+<p>Dear god, the buts. Head on collisions were a pain in the ass, since we want to attribute the death to both snakes, not whichever snake happened to be drawn second. The solution was a hack involving drawing in two passes and using the alpha (transparency) channel as a mark bit. I'm glossing over it because honestly it still gives me heeby jeebies. But it got me used to the idea of hiding data in the alpha channel for the second issue.
+
+<h2>Final boss</h2>
+
+<p>When the spinner activates the snake breaks out of the grid. That obviously means it can move at any angle, but it less obviously means it is drawn one pixel length at a time rather than one character block at a time. That means each frame our snake moves forward, one pixel length of its new front will be drawn over the background, and the remaining pixels will overlap with the previous front of the snake. According to our collision detection algorithm, that's a self collision; activating the spinner instantly kills the snake :(
+
+<p>So using the alpha channel hack again, we steal a few bits this time to store the age of newly drawn pixels. Any pixel drawn within the last 6 frames will not count as a self collision. After each frame, we mark these pixels one older until they are 6 frames old and fully collidable (and old enough to vote).
+
+<h2>Continue</h2>
+
+<p>I want to briefly reflect on Nibbles, because of the unexpected feelings I've gotten in watching other people play. I mean the pride is nice I guess, but what I didn't realize is the joy that comes from creating a reaction in others. I've made a lot of useful things, but to make something that is fairly useless, except that it creates some interest, mirth, mingling, conversation&mdash;well, you realize it actually is pretty useful. What a happy feeling.
+
+<p>For helping me have this realization, thanks <a href="https://benmut.com/">Ben</a> and Taniya for the conviviality of collaborative play, <a href="https://www.iris-fernandez.com/">Iris</a> for dogged domination, <a href="https://www.frankchiarulli.com/">Frank</a> the cabinet father and Joseph for calling out the details, and <a href="https://clairekwong.com/">Claire</a>, <a href="https://maxwellforbes.com/">Max</a>, <a href="https://eieio.games/">Nolen</a>, and Toby for sharing their own play that has unassumingly influenced me.
+
+<p>I highly recommend <a href="https://www.frankchiarulli.com/blog/building-the-rcade/">Frank's write up about building the RCade community</a> as well as <a href="https://www.scd31.com/posts/building-an-arcade-display-adapter">Stephen's incredible adventures building a display adapter from scratch</a>. If you're in NYC, <a href="https://www.wonderville.nyc/">Wonderville</a> is an amazing experience!
+
+<p>Thanks for playing!
+
+  </body>
+</html>
