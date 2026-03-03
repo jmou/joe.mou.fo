@@ -59,9 +59,11 @@ and does not yet work in Firefox.
 <p>While I think "scrollytelling" is overused, I like that it gives the viewer tactility and agency. It's less cinema, more flipbook.
 
 <p>I create the logical scenes, each corresponding to an HTML &lt;section&gt;,
-and then decide how to compose them. Almost everything is measured in
+and then decide how to compose them.
+A typical scene might be 1-2 viewport heights, or 100-200vh.
+Almost everything is measured in
 <a href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Styling_basics/Values_and_units#relative_length_units">vh units</a>,
-so a typical scene might be 100-200vh (1-2 viewport heights).
+(even horizontal lengths to keep independent of the viewport aspect ratio).
 Sometimes scenes overlap, for example the
 <a target=scroll href=#timber>wagging robot and lightning bolt burst</a><a target=_top href=#timber>wagging robot and lightning bolt burst</a>.
 
@@ -85,7 +87,7 @@ Calculations use
 <a href="https://www.joshwcomeau.com/blog/whimsical-animations/#particles-3">polar coordinates</a>
 to get the radial directionality.
 
-<p>CSS animations are tied to a timeline, which usually is the time since the page is loaded. Animated properties are interpolated according to the current position in the timeline. Scroll-driven animations work exactly the same way but they replace the time-based timeline with a scroll position timeline.
+<p>CSS animations are tied to a timeline, which usually is the time since the page is loaded; animated properties are interpolated according to the current position in the timeline. Scroll-driven animations work exactly the same way but they replace the time-based timeline with a scroll position timeline.
 
 <p>If you'd like to learn more about scroll-driven animations, I definitely recommend
 <a href="https://www.youtube.com/playlist?list=PLNYkxOF6rcICM3ttukz9x5LCNOHfWBVnn">this video series by the Chrome team</a>.
