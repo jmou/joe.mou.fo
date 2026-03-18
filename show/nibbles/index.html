@@ -17,15 +17,44 @@
         margin: .5em 0;
         max-width: 95vw;
       }
+      .hero {
+        margin: 1em auto;
+      }
+
+      .diagram {
+        background: blue;
+        border-collapse: collapse;
+        table-layout: fixed;
+        th, td {
+          padding: 0;
+        }
+        /* Hidden header just sets column widths for fixed table layout. */
+        th {
+          width: 20px;
+          height: 0;
+        }
+        td {
+          height: 20px;
+          text-align: center;
+          font-family: monospace;
+          font-size: 11px;
+        }
+        .snake { background: yellow; }
+        .age6 { opacity: 1.0; }
+        .age5 { opacity: 0.9; }
+        .age4 { opacity: 0.8; }
+        .age3 { opacity: 0.7; }
+        .age2 { opacity: 0.6; }
+        .age1 { opacity: 0.5; }
+      }
+
       @media (width > 500px) {
-        img:not(.hero) {
+        img:not(.hero), .diagram {
           float: right;
           margin-left: 1em;
         }
       }
-      .hero {
-        margin: 1em auto;
-      }
+
       @media (prefers-color-scheme: dark) {
         .hero {
           filter: invert(1);
@@ -80,17 +109,30 @@
 
 <h2>Final boss</h2>
 
+<table class="diagram">
+  <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td class="snake age1" colspan=4>age=1</td></tr>
+  <tr><td colspan=4></td><td class="snake age2" colspan=4>age=2</td><td class="snake age1"></td></tr>
+  <tr><td colspan=3></td><td class="snake age3" colspan=4>age=3</td><td class="snake age2"></td><td class="snake age1"></td></tr>
+  <tr><td colspan=2></td><td class="snake age4" colspan=4>age=4</td><td class="snake age3"></td><td class="snake age2"></td><td class="snake age1"></td></tr>
+  <tr><td></td><td class="snake age5" colspan=4>age=5</td><td class="snake age4"></td><td class="snake age3"></td><td class="snake age2"></td><td class="snake age1"></td></tr>
+  <tr><td class="snake age6" colspan=4>age=6+</td><td class="snake age5"></td><td class="snake age4"></td><td class="snake age3"></td><td class="snake age2"></td><td></td></tr>
+  <tr><td class="snake age6" colspan=4>(collidable)</td><td class="snake age5"></td><td class="snake age4"></td><td class="snake age3"></td><td colspan=2></td></tr>
+  <tr><td class="snake age6" colspan=4></td><td class="snake age5"></td><td class="snake age4"></td><td colspan=3></td></tr>
+  <tr><td class="snake age6" colspan=4></td><td class="snake age5"></td><td colspan=4></td></tr>
+</table>
+
 <p>When the spinner activates the snake breaks out of the grid. That obviously means it can move at any angle, but it less obviously means it is drawn one pixel length at a time rather than one character block at a time. That means each frame our snake moves forward, one pixel length of its new front will be drawn over the background, and the remaining pixels will overlap with the previous front of the snake. According to our collision detection algorithm, that's a self collision; activating the spinner instantly kills the snake :(
 
 <p>So using the alpha channel hack again, we steal a few bits this time to store the age of newly drawn pixels. Any pixel drawn within the last 6 frames will not count as a self collision. After each frame, we mark these pixels one older until they are 6 frames old and fully collidable (and old enough to vote).
 
 <h2>Continue</h2>
 
+<p>I highly recommend <a href="https://www.frankchiarulli.com/blog/building-the-rcade/">Frank's write up about building the RCade community</a> as well as <a href="https://www.scd31.com/posts/building-an-arcade-display-adapter">Stephen's incredible adventures building a display adapter from scratch</a>. If you're in NYC, <a href="https://www.wonderville.nyc/">Wonderville</a> is an amazing experience!
+
 <p>I want to briefly reflect on Nibbles, because of the unexpected feelings I've gotten in watching other people play. I mean the pride is nice I guess, but what I didn't realize is the joy that comes from creating a reaction in others. I've made a lot of useful things, but to make something that is fairly useless, except that it creates some interest, mirth, mingling, conversation&mdash;well, you realize it actually is pretty useful. What a happy feeling.
 
 <p>For helping me have this realization, thanks <a href="https://benmut.com/">Ben</a> and Taniya for the conviviality of collaborative play, <a href="https://www.iris-fernandez.com/">Iris</a> for dogged domination, <a href="https://www.frankchiarulli.com/">Frank</a> the cabinet father and Joseph for calling out the details, and <a href="https://clairekwong.com/">Claire</a>, <a href="https://maxwellforbes.com/">Max</a>, <a href="https://eieio.games/">Nolen</a>, and Toby for sharing their own play that has unassumingly influenced me.
-
-<p>I highly recommend <a href="https://www.frankchiarulli.com/blog/building-the-rcade/">Frank's write up about building the RCade community</a> as well as <a href="https://www.scd31.com/posts/building-an-arcade-display-adapter">Stephen's incredible adventures building a display adapter from scratch</a>. If you're in NYC, <a href="https://www.wonderville.nyc/">Wonderville</a> is an amazing experience!
 
 <p>Thanks for playing!
 
