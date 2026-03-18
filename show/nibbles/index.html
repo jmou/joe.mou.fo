@@ -14,11 +14,28 @@
       }
       img {
         display: block;
-        margin: .5em 0;
+        margin: .5em auto;
         max-width: 95vw;
       }
-      .hero {
+
+      header {
+        position: relative;
         margin: 1em auto;
+        max-height: 70vh;
+        overflow: hidden;
+        > video, img {
+          grid-area: a;
+        }
+        video {
+          width: 100%;
+        }
+        img {
+          position: absolute;
+          bottom: 1em;
+          left: 50%;
+          translate: -50%;
+          filter: invert(1);
+        }
       }
 
       .diagram {
@@ -31,7 +48,7 @@
         /* Hidden header just sets column widths for fixed table layout. */
         th {
           width: 20px;
-          height: 0;
+          height: 20px;
         }
         td {
           height: 20px;
@@ -54,12 +71,6 @@
           margin-left: 1em;
         }
       }
-
-      @media (prefers-color-scheme: dark) {
-        .hero {
-          filter: invert(1);
-        }
-      }
     </style>
     <title>NIBBLES.BAS</title>
   </head>
@@ -69,7 +80,10 @@
 <!-- TODO bunny hopping -->
 <!-- TODO CRT filter -->
 
-<img src=hero.png class=hero alt="NIBBLES.BAS">
+<header>
+  <video src=play.mp4 autoplay muted loop></video>
+  <img src=hero.png alt="NIBBLES.BAS">
+</header>
 
 <h2>Start</h2>
 
