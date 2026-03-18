@@ -124,16 +124,15 @@
 <h2>Final boss</h2>
 
 <table class="diagram">
-  <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
-  <tr><td></td><td></td><td></td><td></td><td></td><td class="snake age1" colspan=4>age=1</td></tr>
-  <tr><td colspan=4></td><td class="snake age2" colspan=4>age=2</td><td class="snake age1"></td></tr>
-  <tr><td colspan=3></td><td class="snake age3" colspan=4>age=3</td><td class="snake age2"></td><td class="snake age1"></td></tr>
-  <tr><td colspan=2></td><td class="snake age4" colspan=4>age=4</td><td class="snake age3"></td><td class="snake age2"></td><td class="snake age1"></td></tr>
-  <tr><td></td><td class="snake age5" colspan=4>age=5</td><td class="snake age4"></td><td class="snake age3"></td><td class="snake age2"></td><td class="snake age1"></td></tr>
-  <tr><td class="snake age6" colspan=4>age=6+</td><td class="snake age5"></td><td class="snake age4"></td><td class="snake age3"></td><td class="snake age2"></td><td></td></tr>
-  <tr><td class="snake age6" colspan=4>(collidable)</td><td class="snake age5"></td><td class="snake age4"></td><td class="snake age3"></td><td colspan=2></td></tr>
-  <tr><td class="snake age6" colspan=4></td><td class="snake age5"></td><td class="snake age4"></td><td colspan=3></td></tr>
-  <tr><td class="snake age6" colspan=4></td><td class="snake age5"></td><td colspan=4></td></tr>
+  <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+  <tr><td colspan=3></td><td class="snake age5" colspan=4>age=5</td><td class="snake age4">a</td><td class="snake age3">a</td><td class="snake age2">a</td><td colspan=2></td></tr>
+  <tr><td colspan=2></td><td class="snake age6" colspan=4>age=6+</td><td class="snake age5"></td><td class="snake age4">g</td><td class="snake age3">g</td><td class="snake age2">g</td><td class="snake age1"></td><td></td></tr>
+  <tr><td></td><td class="snake age6" colspan=5>(collidable)</td><td class="snake age5"></td><td class="snake age4">e</td><td class="snake age3">e</td><td class="snake age2">e</td><td class="snake age1"></td><td></td></tr>
+  <tr><td></td><td class="snake age6" colspan=5></td><td class="snake age5"></td><td class="snake age4">=</td><td class="snake age3">=</td><td class="snake age2">=</td><td class="snake age1"></td><td></td></tr>
+  <tr><td></td><td class="snake age6" colspan=5></td><td class="snake age5"></td><td class="snake age4">4</td><td class="snake age3">3</td><td class="snake age2">2</td><td class="snake age1"></td><td></td></tr>
+  <tr><td></td><td class="snake age6" colspan=5></td><td></td><td class="snake age1" colspan=4>age=1</td><td></td></tr>
+  <tr><td></td><td class="snake age6" colspan=4></td><td colspan=7></td></tr>
+  <tr><td colspan=12></td></tr>
 </table>
 
 <p>When the spinner activates the snake breaks out of the grid. That obviously means it can move at any angle, but it less obviously means it is drawn one pixel length at a time rather than one character block at a time. That means each frame our snake moves forward, one pixel length of its new front will be drawn over the background, and the remaining pixels will overlap with the previous front of the snake. According to our collision detection algorithm, that's a self collision; activating the spinner instantly kills the snake :(
