@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset=utf-8>
+  <meta name=viewport content="width=device-width, initial-scale=1">
+  <title>Scroll-driven audio</title>
+  <style>
+    body { font-family: monospace; margin: 0; background: #111; color: #eee; }
+    #ui { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; padding: 1em; background: #111; z-index: 10; }
+    #status { font-size: .9rem; color: #aaa; }
+    #viz { margin-top: .75em; border: 1px solid #333; }
+    #controls { margin-top: .75em; display: grid; grid-template-columns: auto 160px auto; gap: .25em .5em; align-items: center; font-size: .8rem; color: #aaa; }
+    #controls input[type=range] { width: 160px; accent-color: #8af; }
+    #controls .val { color: #eee; text-align: right; font-size: .8rem; }
+    #summary { margin-top: 1.25em; font-size: .8rem; color: #888; text-align: center; max-width: 400px; line-height: 1.4; }
+    #spacer { height: 5000vh; }
+  </style>
+</head>
+<body>
+  <div id=ui>
+    <div id=status>Loading…</div>
+    <canvas id=viz width=400 height=120></canvas>
+    <div id=controls>
+    </div>
+    <div id=summary>
+      A <a href="https://en.wikipedia.org/wiki/Granular_synthesis">granular synthesis</a> engine that maps scroll position to audio offset. 
+      It uses a spring-damper model to smoothly interpolate between your scroll target (white) 
+      and the playback position (blue), creating responsive audio scrubbing.
+    </div>
+  </div>
+<div id=spacer></div>
+<script>
+class GrainPlayer {
+  static GRAIN_DUR = 0.060;
+  static OVERLAP = 0.030;
+  static GRAIN_SPACE = GrainPlayer.GRAIN_DUR - GrainPlayer.OVERLAP;
+  static LOOKAHEAD = 0.100;
+  static INTERVAL = 25;           // ms between scheduler ticks
+  static PARAMS = [
+    { key: 'stiffnessLow',  label: 'stiffness low',  min: 0.001, max: 0.1, step: 0.001, value: 0.010, decimals: 3 },
+    { key: 'stiffnessHigh', label: 'stiffness high', min: 0.01,  max: 0.6, step: 0.01,  value: 0.60,  decimals: 2 },
+    { key: 'overdamp',         label: 'overdamp',          min: 1.0,  max: 5.0,  step: 0.1,  value: 1.7,  decimals: 1 },
+    { key: 'settleTimeMax',    label: 'settle time max',   min: 0.5,  max: 5.0,  step: 0.1,  value: 2.5,  decimals: 1 },
+    { key: 'settleTimeRampUp', label: 'settle time ramp',  min: 1.0,  max: 30.0, step: 0.5,  value: 4.0,  decimals: 1 },
+  ];
+  static MIN_STEP = 0.005;
+  static SETTLE_TIME_MIN = 0.4;
+  static HANN = Float32Array.from({ length: 512 }, (_, i) =>
+    0.5 * (1 - Math.cos(2 * Math.PI * i / 511)));
+
+  #ctx = null;
+  #buffer;
+  #samples;
+  #playing = false;
+  #targetOffset = 0;
+  #playOffset = 0;
+  #velocity = 0;
+  stiffness = 0;
+  damping = 0;
+  settleTime = GrainPlayer.SETTLE_TIME_MIN;
+  #settleTimeElapsed = 0;
+  #lastScrollTime = -Infinity;
+  #nextGrainTime = 0;
+  #intervalId = null;
+
+  constructor(buffer) {
+    this.#buffer = buffer;
+    this.#samples = buffer.getChannelData(0);
+    for (const { key, value } of GrainPlayer.PARAMS) this[key] = value;
+  }
+
+  #findZeroCrossing(index, radius) {
+    const s = this.#samples;
+    const lo = Math.max(1, index - radius);
+    const hi = Math.min(s.length - 1, index + radius);
+    let best = index;
+    let bestDist = Infinity;
+    for (let i = lo; i <= hi; i++) {
+      if (s[i - 1] <= 0 && s[i] > 0) {
+        const dist = Math.abs(i - index);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      }
+    }
+    return best;
+  }
+
+  get playing() { return this.#playing; }
+  get state() { return this.#ctx?.state ?? 'suspended'; }
+
+  initAudio() {
+    if (!this.#ctx) this.#ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.#ctx.state === 'suspended') this.#ctx.resume();
+    return this.#ctx.state === 'running';
+  }
+
+  start() {
+    if (!this.#ctx || this.#playing) return;
+    this.#playing = true;
+    this.#playOffset = this.#targetOffset;
+    this.#velocity = 0;
+    this.settleTime = GrainPlayer.SETTLE_TIME_MIN;
+    this.#settleTimeElapsed = 0;
+    this.#nextGrainTime = this.#ctx.currentTime + 0.05;
+    this.#intervalId = setInterval(() => this.#tick(), GrainPlayer.INTERVAL);
+  }
+
+  stop() {
+    if (!this.#playing) return;
+    this.#playing = false;
+    clearInterval(this.#intervalId);
+    this.#ctx.suspend();
+  }
+
+  seek(offset) {
+    this.#targetOffset = offset;
+    this.#lastScrollTime = this.#ctx?.currentTime ?? -Infinity;
+    if (this.#ctx?.state === 'suspended') this.#ctx.resume();
+  }
+
+  #tick() {
+    if (!this.#playing) return;
+    if (this.#ctx.state !== 'running') return;
+    const now = this.#ctx.currentTime;
+    const deadline = now + GrainPlayer.LOOKAHEAD;
+
+    while (this.#nextGrainTime < deadline) {
+      const displacement = this.#targetOffset - this.#playOffset;
+      const age = now - this.#lastScrollTime;
+      const t = Math.min(age / this.settleTime, 1) ** 2;
+      this.stiffness = this.stiffnessLow + (this.stiffnessHigh - this.stiffnessLow) * t;
+      const dampFactor = this.overdamp + (1 - this.overdamp) * t;
+      this.damping = dampFactor * 2 * Math.sqrt(this.stiffness);
+      const acceleration = displacement * this.stiffness
+                         - this.#velocity * this.damping;
+      this.#velocity += acceleration;
+      this.#playOffset += this.#velocity;
+
+      if (Math.abs(this.#velocity) < GrainPlayer.MIN_STEP
+          && Math.abs(displacement) < GrainPlayer.MIN_STEP) {
+        this.settleTime = GrainPlayer.SETTLE_TIME_MIN;
+        this.#settleTimeElapsed = 0;
+        this.#nextGrainTime = now;
+        break;
+      }
+
+      this.#settleTimeElapsed = Math.min(
+        this.#settleTimeElapsed + GrainPlayer.GRAIN_SPACE,
+        this.settleTimeRampUp
+      );
+      const rampT = this.#settleTimeElapsed / this.settleTimeRampUp;
+      this.settleTime = GrainPlayer.SETTLE_TIME_MIN + 
+        (this.settleTimeMax - GrainPlayer.SETTLE_TIME_MIN) * (rampT * rampT);
+
+      this.#scheduleGrain(this.#nextGrainTime, this.#playOffset);
+      this.#nextGrainTime += GrainPlayer.GRAIN_SPACE;
+    }
+  }
+
+  #scheduleGrain(startTime, offset) {
+    const sr = this.#buffer.sampleRate;
+    const radius = Math.floor(sr * 0.002);
+    const startSample = this.#findZeroCrossing(Math.floor(offset * sr), radius);
+    const endSample   = this.#findZeroCrossing(Math.floor((offset + GrainPlayer.GRAIN_DUR) * sr), radius);
+
+    const snappedOffset   = startSample / sr;
+    const snappedDuration = Math.min((endSample - startSample) / sr, this.#buffer.duration - snappedOffset);
+    if (snappedDuration <= 0) return;
+
+    const gain = this.#ctx.createGain();
+    gain.gain.setValueCurveAtTime(GrainPlayer.HANN, startTime, snappedDuration);
+    gain.connect(this.#ctx.destination);
+
+    const src = this.#ctx.createBufferSource();
+    src.buffer = this.#buffer;
+    src.connect(gain);
+    src.start(startTime, snappedOffset, snappedDuration);
+  }
+
+  get duration()        { return this.#buffer.duration; }
+  get targetOffset()    { return this.#targetOffset; }
+  get playOffset()      { return this.#playOffset; }
+
+  get playbackRate()    { return this.#velocity / GrainPlayer.GRAIN_SPACE; }
+  get audioTime()       { return this.#ctx?.currentTime ?? 0; }
+
+  static async load(url) {
+    const ab = await (await fetch(url)).arrayBuffer();
+    const tmpCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const buffer = await tmpCtx.decodeAudioData(ab);
+    tmpCtx.close();
+    return new GrainPlayer(buffer);
+  }
+}
+
+const status = document.getElementById('status');
+const viz    = document.getElementById('viz');
+const vctx   = viz.getContext('2d');
+const W = viz.width, H = viz.height;
+const WINDOW = 6; // seconds of history visible
+
+// Rolling history for visualization only
+const vizHistory = [];
+
+function drawViz() {
+  requestAnimationFrame(drawViz);
+  vctx.clearRect(0, 0, W, H);
+
+  if (!player?.playing) return;
+
+  const now = player.audioTime;
+  const dur = player.duration;
+
+  // Record target + play offset for this frame
+  vizHistory.push({t: now, target: player.targetOffset, play: player.playOffset});
+  const cutoff = now - WINDOW;
+  while (vizHistory.length > 1 && vizHistory[0].t < cutoff) vizHistory.shift();
+
+  // Map audio time → canvas X (now at right edge)
+  const tx = t => W * (1 - (now - t) / WINDOW);
+  // Map audio offset → canvas Y (0 at bottom, duration at top)
+  const oy = o => H * (1 - o / dur);
+
+  // --- Target offset trace (white) ---
+  vctx.beginPath();
+  for (let i = 0; i < vizHistory.length; i++) {
+    const {t, target} = vizHistory[i];
+    i === 0 ? vctx.moveTo(tx(t), oy(target)) : vctx.lineTo(tx(t), oy(target));
+  }
+  vctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  vctx.lineWidth = 1;
+  vctx.stroke();
+
+  // --- Play offset trace (blue) ---
+  vctx.beginPath();
+  for (let i = 0; i < vizHistory.length; i++) {
+    const {t, play} = vizHistory[i];
+    i === 0 ? vctx.moveTo(tx(t), oy(play)) : vctx.lineTo(tx(t), oy(play));
+  }
+  vctx.strokeStyle = 'rgba(100,180,255,0.85)';
+  vctx.lineWidth = 1.5;
+  vctx.stroke();
+
+  // --- Dots at current time ---
+  vctx.beginPath();
+  vctx.arc(tx(now), oy(player.targetOffset), 3, 0, Math.PI * 2);
+  vctx.fillStyle = '#fff';
+  vctx.fill();
+
+  vctx.beginPath();
+  vctx.arc(tx(now), oy(player.playOffset), 4, 0, Math.PI * 2);
+  vctx.fillStyle = '#8af';
+  vctx.fill();
+
+  // --- Speed bar ---
+  const BAR_X = 6, BAR_Y = 10, BAR_W = 160, BAR_H = 8;
+  const SPEED_MIN = -2, SPEED_MAX = 2;
+  const speedFrac = t => (t - SPEED_MIN) / (SPEED_MAX - SPEED_MIN);
+  const rate = player.playbackRate;
+
+  // track
+  vctx.fillStyle = 'rgba(255,255,255,0.1)';
+  vctx.fillRect(BAR_X, BAR_Y, BAR_W, BAR_H);
+
+  // fill from 0 to current rate (bidirectional)
+  const zeroX = BAR_X + speedFrac(0) * BAR_W;
+  const rateX = BAR_X + Math.min(Math.max(speedFrac(rate), 0), 1) * BAR_W;
+  vctx.fillStyle = 'rgba(100,180,255,0.7)';
+  vctx.fillRect(Math.min(zeroX, rateX), BAR_Y, Math.abs(rateX - zeroX), BAR_H);
+
+  // 1x mark
+  const oneX = BAR_X + speedFrac(1) * BAR_W;
+  vctx.fillStyle = 'rgba(255,255,255,0.9)';
+  vctx.fillRect(oneX - 1, BAR_Y - 3, 2, BAR_H + 6);
+  vctx.font = '9px monospace';
+  vctx.textAlign = 'center';
+  vctx.fillText('1x', oneX, BAR_Y + BAR_H + 12);
+
+  // stiffness + damping labels
+  vctx.font = '11px monospace';
+  vctx.textAlign = 'right';
+  vctx.fillStyle = 'rgba(255,200,100,0.7)';
+  vctx.fillText(`k=${player.stiffness.toFixed(3)}  d=${player.damping.toFixed(3)}  t=${player.settleTime.toFixed(2)}`, W - 6, 14);
+}
+let player;
+drawViz();
+
+GrainPlayer.load('insideout.opus').then(p => {
+  player = p;
+  status.textContent = 'Click or tap to unmute';
+}).catch(e => {
+  status.textContent = 'Error loading file';
+  console.error(e);
+});
+
+const controls = document.getElementById('controls');
+GrainPlayer.PARAMS.forEach(({ key, label, min, max, step, value, decimals }) => {
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  const input = Object.assign(document.createElement('input'), { type: 'range', min, max, step, value });
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = value.toFixed(decimals);
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value);
+    player[key] = v;
+    val.textContent = v.toFixed(decimals);
+  });
+  controls.append(lbl, input, val);
+});
+
+window.addEventListener('pointerdown', () => {
+  if (player?.initAudio()) status.textContent = '';
+});
+window.addEventListener('touchstart',  () => {
+  if (player?.initAudio()) status.textContent = '';
+}, { passive: true });
+window.addEventListener('scroll', () => {
+  if (!player) return;
+  const frac = scrollY / (document.documentElement.scrollHeight - innerHeight);
+  const offset = frac * player.duration;
+  player.seek(offset);
+  player.start();
+});
+</script>
+</body>
+</html>
