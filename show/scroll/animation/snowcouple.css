@@ -1,0 +1,66 @@
+@property --index {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+#snowcouple > div {
+  --height: 376px;
+  --width: 312px;
+  position: sticky;
+  top: calc(50% - var(--height) / 2);
+  margin: 0 auto;
+
+  height: var(--height);
+  width: var(--width);
+  background: url(snowcouple.jpg);
+  background-position-y: calc(-1 * var(--index) * var(--height));
+
+  --zoom: calc(min(.8 * 100vh / var(--height), .8 * 100vw / var(--width)));
+
+  animation: count-105 linear forwards, snowcouple-zoom, snowcouple-tilt forwards;
+  animation-range: contain, cover, cover;
+  animation-timeline: view();
+}
+
+@keyframes count-105 {
+  from {
+    --index: 0;
+  }
+  to {
+    --index: 104;
+  }
+}
+
+@keyframes snowcouple-zoom {
+  30% {
+    scale: var(--zoom);
+  }
+  70% {
+    scale: var(--zoom);
+  }
+}
+
+@keyframes snowcouple-tilt {
+  20% {
+    rotate: 0deg;
+  }
+  53% {
+    rotate: -10deg;
+  }
+  55% {
+    rotate: 0deg;
+  }
+  63% {
+    rotate: 15deg;
+  }
+  77% {
+    rotate: 5deg;
+  }
+  79% {
+    rotate: 15deg;
+  }
+  100% {
+    rotate: 5deg;
+  }
+}

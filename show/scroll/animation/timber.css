@@ -1,0 +1,47 @@
+#timber > div {
+  width: fit-content;
+  font-size: min(50vh, 70vw);
+
+  /* Center below the viewport, peeking out. */
+  position: fixed;
+  bottom: 0;
+  left: 50vw;
+  translate: -50% 100%;
+  /* Bias rotation toward bottom. */
+  transform-origin: center 70%;
+
+  animation: timber-peek, timber-wag;
+  animation-timeline: --timber;
+
+  z-index: 1;  /* above #burst */
+}
+
+/* X translation -50% is centered; 100% - Y translation is amount of peeking.
+ * We could animate a custom @property to make this clearer but that would not
+ * get hardware composited. */
+@keyframes timber-peek {
+  25% {
+    translate: -50% 25%;
+  }
+  50% {
+    translate: -50% 40%;
+  }
+  75% {
+    translate: -50% 25%;
+  }
+}
+
+@keyframes timber-wag {
+  0% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: 30deg;
+  }
+  60% {
+    rotate: -30deg;
+  }
+  100% {
+    rotate: 15deg;
+  }
+}

@@ -1,0 +1,45 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100vh;
+  background: #222;
+  font-family: Noto Color Emoji, Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+section {
+  height: 100vh;
+}
+
+#initial {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  > svg {
+    height: 40vh;
+    margin-bottom: 10vh;
+  }
+}
+
+/* #snot */
+
+/* #snowcouple */
+
+#zoom {
+  margin-top: -25vh;
+  height: 150vh;
+}
+
+#timber {
+  height: 200vh;
+  view-timeline: --timber;
+}
+
+#burst {
+  margin-top: -45vh;
+  height: 150vh;
+  view-timeline: --burst;
+}

@@ -1,0 +1,25 @@
+#zoom {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: white;
+  font-size: min(20vh, 13vw);
+  view-timeline: --zoom;
+}
+
+#zoom > span {
+  position: sticky;
+  top: calc(50% - min(20vh, 10vw) / 2);
+
+  animation: zoom-zoom ease-in;
+  animation-range: 50%;
+  animation-timeline: --zoom;
+
+  z-index: 2;  /* over #timber */
+}
+
+@keyframes zoom-zoom {
+  to {
+    scale: 100;
+  }
+}

@@ -1,0 +1,62 @@
+#burst {
+  /* sibling-index() is less hacky but extremely new (support added in
+   * late 2025, still unsupported in Firefox). */
+  :nth-child(1) { --index: 1; }
+  :nth-child(2) { --index: 2; }
+  :nth-child(3) { --index: 3; }
+  :nth-child(4) { --index: 4; }
+  :nth-child(5) { --index: 5; }
+  :nth-child(6) { --index: 6; }
+  :nth-child(7) { --index: 7; }
+  :nth-child(8) { --index: 8; }
+  :nth-child(9) { --index: 9; }
+  :nth-child(10) { --index: 10; }
+  :nth-child(11) { --index: 11; }
+  :nth-child(12) { --index: 12; }
+  :nth-child(13) { --index: 13; }
+  :nth-child(14) { --index: 14; }
+  :nth-child(15) { --index: 15; }
+  --seed: 6217;
+  --mod: 2999;
+}
+
+#burst > div {
+  /* The particle is just below the viewport bottom center; mentally that is the
+   * coordinate system origin for positioning the top center of the particle. */
+  position: fixed;
+  width: 100%;
+  text-align: center;
+  bottom: 0;
+  translate: 0 100%;
+
+  /* PRNG [20deg, 160deg]. Square --index to make non-linear. */
+  --angle: calc(20deg + 140deg * mod(var(--seed) * var(--index) * var(--index), var(--mod)) / var(--mod));
+  /* Make a lobe shape directed maximally at 90deg, with added randomness. */
+  --distance: calc(sin(var(--angle)) * mod(var(--seed) * var(--index) * var(--index) * 19, var(--mod)) / var(--mod));
+
+  /* Convert from --angle and --distance polar coordinates.
+   * Use vh for both axes so spread is independent of viewport aspect ratio. */
+  --to-x: calc(cos(var(--angle)) * var(--distance) * 50vh);
+  --to-y: calc(sin(var(--angle)) * var(--distance) * 95vh);
+
+  /* PRNG [2.5vh-7.5vh] */
+  font-size: calc(2.5vh + 5vh * mod(var(--seed) * var(--index) * var(--index) * 5, var(--mod)) / var(--mod));
+
+  /* Fade out up to 20% earlier. */
+  --perturb-opacity: calc(-20% * mod(var(--seed) * var(--index) * var(--index) * 7, var(--mod)) / var(--mod));
+
+  animation: burst-pos ease-out, burst-opacity forwards;
+  animation-range: cover, cover calc(80% + var(--perturb-opacity)) cover calc(100% + var(--perturb-opacity));
+  animation-timeline: --burst;
+}
+
+@keyframes burst-pos {
+  to {
+    translate: var(--to-x) calc(100% - var(--to-y));
+  }
+}
+
+@keyframes burst-opacity {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

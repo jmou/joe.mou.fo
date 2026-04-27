@@ -1,0 +1,120 @@
+@charset "UTF-8";
+
+#snot {
+  height: 150vh;
+  view-timeline: --snot;
+}
+
+#snot-c, #snot-j {
+  position: fixed;
+  /* Initial position is just left of the viewport top center. */
+  top: 0;
+  left: calc(40vw - 20vh);
+
+  &::before {
+    display: block;
+    content: "";
+    /* Offsetting the rotation origin down gives a rollier wobble. */
+    transform-origin: 50% 80%;
+  }
+}
+
+#snot-c {
+  font-size: 40vh;
+
+  /* We split the x and y transforms so they can use different easing functions
+   * to get a hoppy, non-linear movement. */
+  animation: snot-c-y ease-out;
+  animation-timeline: --snot;
+  /* Rotation must be on the inner animation (before any translation). */
+  &::before {
+    animation: snot-c-emoji, snot-c-x, snot-c-rotate;
+    animation-timing-function: step-end, ease-in, ease;
+    animation-timeline: --snot;
+  }
+}
+
+#snot-j {
+  font-size: 30vh;
+
+  animation: snot-j-y ease-out;
+  animation-timeline: --snot;
+  &::before {
+    animation: snot-j-emoji, snot-j-x, snot-j-rotate;
+    animation-timing-function: step-end, ease-in, ease;
+    animation-timeline: --snot;
+  }
+}
+
+@keyframes snot-c-emoji {
+  0% { content: "😪"; }
+  37% { content: "🤧"; scale: -1 1; }  /* horizontal flip */
+  50% { content: "😖"; }
+  65% { content: "😳"; }
+  100% { content: "😳"; }
+}
+
+@keyframes snot-j-emoji {
+  0% { content: "👄"; }
+  35% { content: "🫦"; }
+  100% { content: "🫦"; }
+}
+
+@keyframes snot-c-x {
+  0% { translate: -20vh 0; }
+  20% { translate: -10vh 0; }
+  60% { translate: -10vh 0; }
+  100% { translate: -100vw 0; }
+}
+
+@keyframes snot-c-y {
+  0% { translate: 0 100vh; }
+  20% { translate: 0 40vh; }
+  60% { translate: 0 40vh; }
+  100% { translate: 0 -100vh; }
+}
+
+@keyframes snot-c-rotate {
+  0% { rotate: 5deg; }
+  35% { rotate: -5deg; }
+  36% { rotate: 2deg; }
+  45% { rotate: 4deg; }
+  50% { rotate: -5deg; }
+  54% { rotate: 5deg; }
+  58% { rotate: -5deg; }
+  62% { rotate: 5deg; }
+  66% { rotate: -5deg; }
+  72% { rotate: 5deg; }
+  80% { rotate: -5deg; }
+  100% { rotate: 5deg; }
+}
+
+@keyframes snot-j-x {
+  0% { translate: calc(60vw + 30vh) 0; }
+  10% { translate: 40vw 0; }
+  15% { translate: 25vw 0; }
+  20% { translate: 5vh 0; }
+  30% { translate: 8vh 0; }
+  60% { translate: 13vh 0; }
+  100% { translate: -100vw 0; }
+}
+
+@keyframes snot-j-y {
+  0% { translate: 0 0; }
+  10% { translate: 0 40vh; }
+  15% { translate: 0 65vh; }
+  20% { translate: 0 52vh; }
+  60% { translate: 0 54vh; }
+  100% { translate: 0 -20vh; }
+}
+
+@keyframes snot-j-rotate {
+  0% { rotate: 5deg; }
+  10% { rotate: -5deg; }
+  15% { rotate: 5deg; }
+  20% { rotate: 10deg; }
+  30% { rotate: 2deg; }
+  40% { rotate: 8deg; }
+  60% { rotate: 15deg; }
+  100% { rotate: -20deg; }
+}
