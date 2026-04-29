@@ -1,0 +1,308 @@
+<style>
+@property --prog {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@keyframes page-turn {
+  from { --prog: 0; }
+  to   { --prog: 1; }
+}
+
+:root {
+  --pw: 265px; /* page width  */
+  --ph: 300px; /* page height */
+  --pt: 4px;   /* page thickness — Z spread between stacked pages */
+  --co: 4px;   /* cover overhang beyond page edges (outer, top, bottom) */
+}
+
+body {
+  margin: 0;
+  min-height: 400vh;
+  background-color: oklch(93% 0.04 85);
+  background-image: repeating-linear-gradient(
+    in oklch to bottom,
+    oklch(93% 0.04 85),
+    oklch(84% 0.06 42) 1000px,
+    oklch(88% 0.04 138) 2000px,
+    oklch(93% 0.04 85) 3000px
+  );
+}
+
+#book-scene { position: sticky; top: 0; perspective: 1000px; display: flex; justify-content: center; padding: 2.5rem 0 3.5rem; }
+#book { display: flex; width: calc(2*var(--pw) + 2*var(--co)); height: var(--ph); transform: rotateX(30deg); transform-style: preserve-3d; }
+/* Covers are --co larger than pages on three sides (outer edge, top, bottom).
+   translateZ(-1px) keeps them strictly behind the page stack (pages Z ≥ 0). */
+#left-cover {
+  width: calc(var(--pw) + var(--co)); height: calc(var(--ph) + 2*var(--co));
+  background-color: #fdfaf5;
+  background-image:
+    linear-gradient(to bottom,  #b8a47e 11px, transparent 12px),
+    linear-gradient(to top,     #b8a47e 11px, transparent 12px),
+    linear-gradient(to right,   #b8a47e 11px, transparent 12px);
+  border-top: 1px solid #ecdfc6; border-bottom: 3px solid #8a6e48; border-left: 3px solid #b8a47e; border-right: none; border-radius: 6px 0 0 6px;
+  box-sizing: border-box; flex-shrink: 0; align-self: flex-start;
+  margin-top: calc(-1 * var(--co)); transform: translateZ(-1 * var(--pt));
+}
+
+/* Container that holds all stacked pages */
+#pages-container {
+  position: relative; width: var(--pw); height: var(--ph); flex-shrink: 0;
+  transform-style: preserve-3d;
+}
+#right-cover {
+  width: calc(var(--pw) + var(--co)); height: calc(var(--ph) + 2*var(--co));
+  background-color: #fdfaf5;
+  background-image:
+    linear-gradient(to bottom,  #b8a47e 11px, transparent 12px),
+    linear-gradient(to top,     #b8a47e 11px, transparent 12px),
+    linear-gradient(to left,   #b8a47e 11px, transparent 12px);
+  border-top: 1px solid #ecdfc6; border-bottom: 3px solid #8a6e48; border-right: 3px solid #b8a47e; border-left: none; border-radius: 0 6px 6px 0;
+  box-sizing: border-box; flex-shrink: 0; align-self: flex-start;
+  margin-left: calc(-1 * var(--pw)); margin-top: calc(-1 * var(--co));
+  transform: translateZ(-1px);
+}
+
+.page {
+  position: absolute; top: 0; left: 0;
+  width: var(--pw); height: var(--ph); overflow: visible; transform-style: preserve-3d;
+  --bMax: 60px;
+  --overlap: 8px;
+  --factor: calc(11 / 12); /* 1 − u_min, where u_min = 1/12 (smallest nonzero boundary) */
+
+  /* Scroll-driven page turns — pages overlap by 50%: each starts when the
+     previous is halfway through. --step is the fraction of one page-duration
+     between successive start points (0.5 = 50% overlap).
+     Total scroll units = max-rank × step + 1.
+     Page rank r runs from  r·step/total  →  (r·step+1)/total. */
+  --step: 0.6;
+  animation: page-turn linear both;
+  animation-timeline: scroll(root);
+  animation-range:
+    calc(var(--page-rank) * var(--step) / (var(--max-rank) * var(--step) + 1) * 100%)
+    calc((var(--page-rank) * var(--step) + 1) / (var(--max-rank) * var(--step) + 1) * 100%);
+
+  /* Page thickness: Z is always ≥ 0, interpolating between two non-negative
+     endpoints as the page turns.
+
+       prog=0 (right stack)  →  Z = (maxRank − rank) · pt
+                                   page 1 (rank 0) highest, last page (rank N) at 0
+       prog=1 (left stack)   →  Z = rank · pt
+                                   last page (rank N) highest, page 1 (rank 0) at 0
+
+     --page-rank counts up with turn order: first page = 0, last page = maxRank.
+     Formula: pt · ( (maxRank−rank)·(1−prog) + rank·prog ) */
+  --page-z: calc(var(--pt) * (
+      (var(--max-rank) - var(--page-rank, 0)) * (1 - var(--prog))
+    + var(--page-rank, 0) * var(--prog)
+  ));
+  transform: translateZ(var(--page-z));
+
+  --max-rank: 2;
+
+  &:nth-child(1) { --page-rank: 0; }
+  &:nth-child(2) { --page-rank: 1; }
+  &:nth-child(3) { --page-rank: 2; }
+}
+
+/* Each slice computes its own position from --prog (animated on .page and
+   inherited), plus --u0/--u1 (its left/right boundary parameters, set below)
+   and --bMax/--factor (set on .page and inherited).
+
+   The page sweeps an arc of theta = 180°·prog. We add a parabolic billow
+   perpendicular to that arc: P(u) = FlatLine(u) + Perp·4H·u·(1-u), where
+   Perp = (−sinT, cosT) is the unit normal to the swept direction (cosT, sinT). */
+.page > div {
+  position: absolute; left: 0; top: 0; height: var(--ph);
+  /* Default width covers slices 0–10; slice 11 overrides below. */
+  width: calc(var(--pw) / 12 + var(--overlap));
+  transform-origin: left center; transform-style: preserve-3d;
+
+  /* Overall rotation angle of the page at this moment. */
+  --theta: calc(var(--prog) * 180deg);
+  --sinT:  sin(var(--theta));
+  --cosT:  cos(var(--theta));
+
+  /* Billow height H = bMax·sinT, clamped so z never goes negative.
+     When cosT < 0 (second half of turn), the perpendicular offset has a
+     negative z component; Hmax is the largest H that keeps all z ≥ 0.
+     max(0.001, −cosT) avoids division by zero when cosT ≥ 0, where
+     Hmax would be infinite (no clamping needed) anyway. */
+  --H: min(
+    calc(var(--bMax) * var(--sinT)),
+    calc(var(--pw) * var(--sinT) / (4 * var(--factor) * max(0.001, calc(-1 * var(--cosT)))))
+  );
+
+  /* Perpendicular billow offset at the left (0) and right (1) boundary of this slice.
+     The parabola 4·u·(1−u) peaks at u = 0.5 and is zero at both ends. */
+  --off0: calc(4 * var(--H) * var(--u0) * (1 - var(--u0)));
+  --off1: calc(4 * var(--H) * var(--u1) * (1 - var(--u1)));
+
+  /* World-space (x, z) positions of the left and right slice boundaries.
+     FlatLine(u) = (u·--pw·cosT, u·--pw·sinT); Perp = (−sinT, cosT). */
+  --x0: calc(var(--u0) * var(--pw) * var(--cosT) - var(--off0) * var(--sinT));
+  --z0: calc(var(--u0) * var(--pw) * var(--sinT) + var(--off0) * var(--cosT));
+  --x1: calc(var(--u1) * var(--pw) * var(--cosT) - var(--off1) * var(--sinT));
+  --z1: calc(var(--u1) * var(--pw) * var(--sinT) + var(--off1) * var(--cosT));
+
+  /* Translate to the left boundary, then rotate to align with the local tangent.
+     atan2(z0−z1, x1−x0) = −atan2(z1−z0, x1−x0), giving the negated angle
+     the slice needs to face along its own dx/dz direction. */
+  --rotY: atan2(calc(var(--z0) - var(--z1)), calc(var(--x1) - var(--x0)));
+  /* Edge-on shading: face-on slices (rotY≈0) are unshaded; edge-on slices darkened. */
+  --edge-shade: calc(abs(sin(var(--rotY))) * 0.4);
+  transform: translateX(var(--x0)) translateZ(var(--z0)) rotateY(var(--rotY));
+
+  /* Per-slice boundary parameters (--u0, --u1). */
+  &:nth-child(1)  { --slice:  0; --u0: 0;            --u1: calc( 1/12); }
+  &:nth-child(2)  { --slice:  1; --u0: calc( 1/12);  --u1: calc( 2/12); }
+  &:nth-child(3)  { --slice:  2; --u0: calc( 2/12);  --u1: calc( 3/12); }
+  &:nth-child(4)  { --slice:  3; --u0: calc( 3/12);  --u1: calc( 4/12); }
+  &:nth-child(5)  { --slice:  4; --u0: calc( 4/12);  --u1: calc( 5/12); }
+  &:nth-child(6)  { --slice:  5; --u0: calc( 5/12);  --u1: calc( 6/12); }
+  &:nth-child(7)  { --slice:  6; --u0: calc( 6/12);  --u1: calc( 7/12); }
+  &:nth-child(8)  { --slice:  7; --u0: calc( 7/12);  --u1: calc( 8/12); }
+  &:nth-child(9)  { --slice:  8; --u0: calc( 8/12);  --u1: calc( 9/12); }
+  &:nth-child(10) { --slice:  9; --u0: calc( 9/12);  --u1: calc(10/12); }
+  &:nth-child(11) { --slice: 10; --u0: calc(10/12);  --u1: calc(11/12); }
+  &:nth-child(12) { --slice: 11; --u0: calc(11/12);  --u1: 1; }
+
+  /* Adjust last slice width (no overlap) and border. */
+  &:last-child {
+    width: calc(var(--pw) / 12);
+    > div:first-child {
+      border-right: 0.5px solid #c8b89a;
+      border-radius: 0 4px 4px 0;
+    }
+    > div:last-child{
+      border-left: 0.5px solid #c8b89a;
+      border-radius: 4px 0 0 4px;
+    }
+  }
+
+  /* page face */
+  > div {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+
+    /* Edge-on shading overlay — inherits --edge-shade from the slice wrapper. */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      /* gradient reduces banding */
+      background: linear-gradient(to right, #000f, #000d);
+      opacity: var(--edge-shade);
+      pointer-events: none;
+    }
+
+    /* front face */
+    &:first-child {
+      background-image: var(--img-front);
+      background-color: #fdfaf5;
+      background-size: var(--pw) var(--ph);
+      background-position-x: calc(var(--slice) * var(--pw) / -12);
+    }
+
+    /* back face */
+    &:last-child {
+      transform: rotateY(180deg);
+      background-image: var(--img-back);
+      background-color: #f5f7fd;
+      background-size: var(--pw) var(--ph);
+      background-position-x: right calc(var(--slice) * var(--pw) / -12);
+    }
+  }
+}
+</style>
+
+<div id="book-scene">
+  <div id="book">
+    <div id="left-cover"></div>
+    <!-- Pages are stacked absolutely; z-index controls which is on top before it turns.
+         Scroll-driven: each page turn occupies 1/3 of the total scroll range. -->
+    <div id="pages-container">
+
+      <div class="page" style="--img-front:url('1a.jpg'); --img-back:url('1b.jpg')">
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+      </div>
+
+      <div class="page" style="--img-front:url('2a.jpg'); --img-back:url('2b.jpg')">
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+      </div>
+
+      <div class="page" style="--img-front:url('3a.jpg'); --img-back:url('3b.jpg')">
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+        <div><div></div><div></div></div>
+      </div>
+
+    </div><!-- #pages-container -->
+    <div id="right-cover"></div>
+  </div>
+</div>
+
+<div id="description">
+  <label><input type=checkbox onclick="javascript:document.body.classList.toggle('outlines-on', this.checked)"> Show slice outlines</label>
+
+  <p>A scroll-driven page-turn animation built entirely in CSS. To give the
+  appearance that the page is billowing, we subdivide each page face into 12
+  vertical slices which are positioned and rotated in 3D along a parabolic arc.
+</div>
+
+<style>
+.outlines-on .page > div {
+  > div:first-child { outline: 1px solid blue; }
+  > div:last-child { outline: 1px solid red; }
+}
+
+#description {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, 90vw);
+  text-align: center;
+  font-family: Georgia, serif;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: oklch(38% 0.05 55);
+  background: oklch(96% 0.025 75 / 0.72);
+  backdrop-filter: blur(6px);
+  border: 1px solid oklch(80% 0.05 60 / 0.5);
+  border-radius: 10px;
+  padding: 0.9em 1.4em;
+}
+</style>
