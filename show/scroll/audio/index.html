@@ -5,27 +5,32 @@
   <meta name=viewport content="width=device-width, initial-scale=1">
   <title>Scroll-driven audio</title>
   <style>
-    body { font-family: monospace; margin: 0; background: #111; color: #eee; }
-    #ui { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; padding: 1em; background: #111; z-index: 10; }
+    body { font-family: monospace; margin: 0; background: #111; color: #eee;
+      background-image: repeating-linear-gradient(in oklch to bottom, oklch(22% 0.07 255), oklch(28% 0.09 350) 1000px, oklch(22% 0.07 255) 2000px); }
+    #ui { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; padding: 1em; z-index: 10; }
     #status { font-size: .9rem; color: #aaa; }
-    #viz { margin-top: .75em; border: 1px solid #333; }
+    #video { width: 400px; max-width: 100%; margin-top: .75em; }
+    #viz { margin-top: .75em; border: 1px solid rgba(255,255,255,0.4); }
     #controls { margin-top: .75em; display: grid; grid-template-columns: auto 160px auto; gap: .25em .5em; align-items: center; font-size: .8rem; color: #aaa; }
     #controls input[type=range] { width: 160px; accent-color: #8af; }
     #controls .val { color: #eee; text-align: right; font-size: .8rem; }
-    #summary { margin-top: 1.25em; font-size: .8rem; color: #888; text-align: center; max-width: 400px; line-height: 1.4; }
-    #spacer { height: 5000vh; }
+    #summary { margin-top: 1.25em; font-size: .8rem; color: #ccc; text-align: center; max-width: 400px; line-height: 1.4; }
+    #summary a { color: #acd; }
+    #spacer { height: 2000vh; }
   </style>
 </head>
 <body>
   <div id=ui>
     <div id=status>Loading…</div>
+    <video id=video src="insideout.mp4" muted preload="auto" playsinline autoplay></video>
     <canvas id=viz width=400 height=120></canvas>
     <div id=controls>
     </div>
     <div id=summary>
-      A <a href="https://en.wikipedia.org/wiki/Granular_synthesis">granular synthesis</a> engine that maps scroll position to audio offset. 
-      It uses a spring-damper model to smoothly interpolate between your scroll target (white) 
-      and the playback position (blue), creating responsive audio scrubbing.
+      A <a href="https://en.wikipedia.org/wiki/Granular_synthesis">granular synthesis</a>
+      engine that uses your scrollbar to control playback.
+      Scrubbing uses a spring-damper model to interpolate between your scroll
+      position (white) and the playback position (blue).
     </div>
   </div>
 <div id=spacer></div>
@@ -93,11 +98,17 @@ class GrainPlayer {
     return this.#ctx.state === 'running';
   }
 
+  #everStarted = false;
+
   start() {
-    if (!this.#ctx || this.#playing) return;
+    if (!this.#ctx) return;
+    if (this.#playing) return;
     this.#playing = true;
-    this.#playOffset = this.#targetOffset;
-    this.#velocity = 0;
+    if (!this.#everStarted) {
+      this.#everStarted = true;
+      this.#playOffset = this.#targetOffset;
+      this.#velocity = 0;
+    }
     this.settleTime = GrainPlayer.SETTLE_TIME_MIN;
     this.#settleTimeElapsed = 0;
     this.#nextGrainTime = this.#ctx.currentTime + 0.05;
@@ -109,6 +120,12 @@ class GrainPlayer {
     this.#playing = false;
     clearInterval(this.#intervalId);
     this.#ctx.suspend();
+  }
+
+  #pause() {
+    if (!this.#playing) return;
+    this.#playing = false;
+    clearInterval(this.#intervalId);
   }
 
   seek(offset) {
@@ -140,6 +157,7 @@ class GrainPlayer {
         this.settleTime = GrainPlayer.SETTLE_TIME_MIN;
         this.#settleTimeElapsed = 0;
         this.#nextGrainTime = now;
+        this.#pause();
         break;
       }
 
@@ -193,6 +211,8 @@ class GrainPlayer {
 }
 
 const status = document.getElementById('status');
+const video  = document.getElementById('video');
+video.pause();
 const viz    = document.getElementById('viz');
 const vctx   = viz.getContext('2d');
 const W = viz.width, H = viz.height;
@@ -202,10 +222,18 @@ const WINDOW = 6; // seconds of history visible
 const vizHistory = [];
 
 function drawViz() {
-  requestAnimationFrame(drawViz);
+  if (!player?.playing) {
+    vizActive = false;
+    return;
+  }
+
   vctx.clearRect(0, 0, W, H);
 
-  if (!player?.playing) return;
+  // Scrub video in sync with granular playback position
+  const target = Math.max(0, Math.min(player.playOffset, video.duration || Infinity));
+  if (isFinite(target) && Math.abs(video.currentTime - target) > 0.02) {
+    video.currentTime = target;
+  }
 
   const now = player.audioTime;
   const dur = player.duration;
@@ -280,11 +308,20 @@ function drawViz() {
   vctx.textAlign = 'right';
   vctx.fillStyle = 'rgba(255,200,100,0.7)';
   vctx.fillText(`k=${player.stiffness.toFixed(3)}  d=${player.damping.toFixed(3)}  t=${player.settleTime.toFixed(2)}`, W - 6, 14);
+
+  requestAnimationFrame(drawViz);
 }
 let player;
+let vizActive = false;
+function startViz() {
+  if (!vizActive) {
+    vizActive = true;
+    requestAnimationFrame(drawViz);
+  }
+}
 drawViz();
 
-GrainPlayer.load('insideout.opus').then(p => {
+GrainPlayer.load('insideout.m4a').then(p => {
   player = p;
   status.textContent = 'Click or tap to unmute';
 }).catch(e => {
@@ -320,6 +357,7 @@ window.addEventListener('scroll', () => {
   const offset = frac * player.duration;
   player.seek(offset);
   player.start();
+  startViz();
 });
 </script>
 </body>
