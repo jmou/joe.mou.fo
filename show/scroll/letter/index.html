@@ -60,9 +60,11 @@ body {
   top: var(--topline);
   transform-origin: top center;
   transform-style: preserve-3d;
-  animation: flap-open linear both;
-  animation-timeline: --unseal;
-  animation-range: cover contain;
+  animation: flap-open ease both;
+  &, .shade::after {
+    animation-timeline: --unseal;
+    animation-range: cover contain;
+  }
 }
 
 #flap .face {
@@ -94,7 +96,7 @@ body {
   left: calc(50% - var(--let-w) / 2);
   top: calc(var(--topline) - var(--panel-h) + var(--env-margin));
   transform-style: preserve-3d;
-  animation: letter-slide linear both, letter-settle ease-out forwards;
+  animation: letter-slide ease-in both, letter-settle ease-out forwards;
   animation-timeline: --slide, --settle;
   animation-range: cover contain;
 }
@@ -142,16 +144,20 @@ body {
 
 #panel-top {
   transform-origin: bottom center;
-  animation: unfold-top linear both;
-  animation-timeline: --settle;
-  animation-range: 0% 60%;
+  animation: unfold-top ease both;
+  &, .shade::after {
+    animation-timeline: --settle;
+    animation-range: 0% 60%;
+  }
 }
 
 #panel-bot {
   transform-origin: top center;
-  animation: unfold-bot linear both;
-  animation-timeline: --settle;
-  animation-range: 40% 100%;
+  animation: unfold-bot ease both;
+  &, .shade::after {
+    animation-timeline: --settle;
+    animation-range: 40% 100%;
+  }
 }
 
 @keyframes unfold-top {
@@ -162,6 +168,21 @@ body {
 @keyframes unfold-bot {
   from { transform: rotateX(180deg); }
   to   { transform: rotateX(5deg) translateY(-1px); }
+}
+
+.shade::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, #000f, #000d);
+  pointer-events: none;
+  animation: shade-fold ease both;
+}
+
+@keyframes shade-fold {
+  0% { opacity: 0; }
+  50% { opacity: 0.1; }
+  100% { opacity: .015; }
 }
 
 section {
@@ -180,20 +201,20 @@ section {
   <div id="envelope-back"></div>
   <div id="envelope-front"></div>
   <div id="flap">
-    <div class="face front"></div>
-    <div class="face back"></div>
+    <div class="face shade front"></div>
+    <div class="face shade back"></div>
   </div>
   <div id="letter">
     <div class="panel" id="panel-top">
-      <div class="face front"></div>
-      <div class="face back"></div>
+      <div class="face shade front"></div>
+      <div class="face shade back"></div>
     </div>
     <div class="panel" id="panel-mid">
       <div class="face front"></div>
     </div>
     <div class="panel" id="panel-bot">
-      <div class="face front"></div>
-      <div class="face back"></div>
+      <div class="face shade front"></div>
+      <div class="face shade back"></div>
     </div>
   </div>
 </div>
