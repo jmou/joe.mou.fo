@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name=viewport content="width=device-width, initial-scale=1">
+<title>Letter</title>
+<style>
+
+body {
+  margin: 0;
+  background: oklch(92% 0.04 85);
+  timeline-scope: --unseal, --slide, --settle;
+}
+
+#scene {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+
+  --let-w: 425px;
+  --let-h: 555px;
+  --panel-h: calc(var(--let-h) / 3);
+  --env-margin: 10px;
+  --env-w: calc(var(--let-w) + 2 * var(--env-margin));
+  --env-h: calc(var(--panel-h) + 2 * var(--env-margin));
+  --flap-h: calc(var(--env-h) * 0.3);
+  --slide-dist: 200px;
+  --topline: calc(var(--panel-h) + var(--slide-dist));
+}
+
+#envelope-back {
+  position: absolute;
+  width: var(--env-w);
+  height: var(--env-h);
+  left: calc(50% - var(--env-w) / 2);
+  top: var(--topline);
+  background: oklch(90% 0.05 72);
+  transform: translateZ(-1px);
+}
+
+#envelope-front {
+  position: absolute;
+  width: var(--env-w);
+  height: var(--env-h);
+  left: calc(50% - var(--env-w) / 2);
+  top: var(--topline);
+  background: oklch(90% 0.05 72);
+  background: oklch(96% 0.03 76);
+  clip-path: polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%, 50% 30%);
+  transform: translateZ(1px);
+}
+
+#flap {
+  position: absolute;
+  width: var(--env-w);
+  height: var(--flap-h);
+  left: calc(50% - var(--env-w) / 2);
+  top: var(--topline);
+  transform-origin: top center;
+  transform-style: preserve-3d;
+  animation: flap-open linear both;
+  animation-timeline: --unseal;
+  animation-range: cover contain;
+}
+
+#flap .face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+#flap .front {
+  background: oklch(96% 0.03 76);
+  clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+}
+
+#flap .back  {
+  background: oklch(88% 0.05 70);
+  transform: rotateX(180deg);
+  clip-path: polygon(0% 100%, 100% 100%, 50% 0%);
+}
+
+@keyframes flap-open {
+  from { transform: translateZ(2px) rotateX(0deg); }
+  to   { transform: translateZ(-1px) translateY(1px) rotateX(180deg); }
+}
+
+#letter {
+  position: absolute;
+  width: var(--let-w);
+  height: var(--let-h);
+  left: calc(50% - var(--let-w) / 2);
+  top: calc(var(--topline) - var(--panel-h) + var(--env-margin));
+  transform-style: preserve-3d;
+  animation: letter-slide linear both, letter-settle ease-out forwards;
+  animation-timeline: --slide, --settle;
+  animation-range: cover contain;
+}
+
+@keyframes letter-slide {
+  from { translate: 0 0; }
+  to   { translate: 0 calc(-1 * var(--slide-dist)); }
+}
+
+@keyframes letter-settle {
+  0%   { translate: 0px  calc(-1 * var(--slide-dist));       rotate: 0deg; }
+  40%  { translate: 8px  calc(-1 * var(--slide-dist) - 30px); rotate: -1deg; }
+  100% { translate: 10px calc(-1 * var(--slide-dist) + 40px) 2px; rotate: -3deg; }
+}
+
+.panel {
+  width: var(--let-w);
+  height: var(--panel-h);
+  transform-style: preserve-3d;
+}
+
+.panel .face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.panel .front {
+  background: oklch(99% 0.01 75);
+  /* lined paper */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 23px,
+    oklch(80% 0.04 230 / 0.35) 23px,
+    oklch(80% 0.04 230 / 0.35) 24px
+  );
+  background-position-y: 8px;
+}
+
+.panel .back {
+  background: oklch(94% 0.03 72);
+  transform: rotateX(180deg);
+}
+
+#panel-top {
+  transform-origin: bottom center;
+  animation: unfold-top linear both;
+  animation-timeline: --settle;
+  animation-range: 0% 60%;
+}
+
+#panel-bot {
+  transform-origin: top center;
+  animation: unfold-bot linear both;
+  animation-timeline: --settle;
+  animation-range: 40% 100%;
+}
+
+@keyframes unfold-top {
+  from { transform: rotateX(-180deg); }
+  to   { transform: rotateX(-7deg) translateY(1px); }
+}
+
+@keyframes unfold-bot {
+  from { transform: rotateX(180deg); }
+  to   { transform: rotateX(5deg) translateY(-1px); }
+}
+
+section {
+  height: 100vh;
+}
+
+#phase-unseal { view-timeline: --unseal; }
+#phase-slide  { view-timeline: --slide; }
+#phase-settle { view-timeline: --settle; }
+
+</style>
+</head>
+<body>
+
+<div id="scene">
+  <div id="envelope-back"></div>
+  <div id="envelope-front"></div>
+  <div id="flap">
+    <div class="face front"></div>
+    <div class="face back"></div>
+  </div>
+  <div id="letter">
+    <div class="panel" id="panel-top">
+      <div class="face front"></div>
+      <div class="face back"></div>
+    </div>
+    <div class="panel" id="panel-mid">
+      <div class="face front"></div>
+    </div>
+    <div class="panel" id="panel-bot">
+      <div class="face front"></div>
+      <div class="face back"></div>
+    </div>
+  </div>
+</div>
+
+<section id="phase-unseal"></section>
+<section id="phase-slide"></section>
+<section id="phase-settle"></section>
+<section></section>
+
+</body>
+</html>
