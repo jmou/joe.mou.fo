@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>clinamen</title>
+    <!-- Inline, so the built site stays two files and no host has to be told
+         where a favicon lives. A basin in the floor, at the two colours the
+         canvas paints them. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23cda687'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%2304a8e6'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        /* Birch, matching the floor the canvas paints. */
+        background: #cda687;
+        /* The canvas owns the viewport; panning is handled by the app rather
+           than by a scrollable document. `touch-action` belongs here and not
+           on the canvas: it is read off whatever a finger lands on, and the
+           first thing a finger lands on is the veil over the top of it. */
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
+      }
+      /* The canvas is the window, not the world: it stays put over the
+         viewport and the floor moves under it. */
+      canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        /* The floor can be taken hold of and pulled. */
+        cursor: grab;
+      }
+      body.dragging,
+      body.dragging canvas {
+        cursor: grabbing;
+      }
+      #veil {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 0.75rem;
+        text-align: center;
+        background: rgba(206, 175, 143, 0.86);
+        backdrop-filter: blur(6px);
+        color: #4a4032;
+        font: 400 15px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: opacity 900ms ease;
+      }
+      #veil h1 {
+        margin: 0;
+        font-weight: 300;
+        font-size: 2.6rem;
+        letter-spacing: 0.34em;
+        text-indent: 0.34em;
+        color: #2b241a;
+      }
+      #veil p {
+        margin: 0;
+        max-width: 34ch;
+        opacity: 0.62;
+      }
+      /* The instructions, under the attribution and quieter than it. */
+      #veil .aside {
+        opacity: 0.4;
+      }
+      #veil.gone {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #hud {
+        position: fixed;
+        left: 14px;
+        bottom: 12px;
+        color: #574833;
+        font: 400 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.06em;
+        opacity: 0;
+        transition: opacity 400ms ease;
+        pointer-events: none;
+        white-space: pre;
+      }
+      #hud.on {
+        opacity: 0.75;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/main-CLU9P0WR.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/sim-B88PxYSu.js">
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="veil">
+      <h1>CLINAMEN</h1>
+      <p>inspired by the work of the same name by Céleste Boursier-Mougenot</p>
+      <p class="aside">headphones · click to begin</p>
+      <p class="aside">scroll or drag to move around the room</p>
+    </div>
+    <div id="hud"></div>
+  </body>
+</html>

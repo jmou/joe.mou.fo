@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>clinamen renderer diff</title>
+    <style>
+      body { margin: 16px; font: 14px system-ui, sans-serif; background: #eee; color: #222; }
+      label { margin-right: 12px; }
+      button { padding: 4px 10px; }
+      pre { white-space: pre-wrap; }
+      .canvases { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+      canvas { width: min(45vw, 480px); height: auto; background: white; image-rendering: auto; }
+    </style>
+    <script type="module" crossorigin src="./assets/debug-BmQcXH5e.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/sim-B88PxYSu.js">
+    <link rel="modulepreload" crossorigin href="./assets/render.__ref-CwYCSj6j.js">
+  </head>
+  <body>
+    <h1>renderer fidelity diff</h1>
+    <p>
+      <label>steps <input id="steps" type="number" min="0" value="120" /></label>
+      <label>dpr <select id="dpr"><option>1</option><option>2</option></select></label>
+      <button id="run">run fixed views</button>
+    </p>
+    <pre id="result">not run</pre>
+    <div class="canvases"><canvas id="reference"></canvas><canvas id="candidate"></canvas></div>
+  </body>
+</html>
